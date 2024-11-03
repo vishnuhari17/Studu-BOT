@@ -15,7 +15,12 @@ async function startBot() {
 
 
     bot.onText(/\/assignment/, async (msg) => {
-        await handleAssignmentCommand(bot, msg);
+       if (ADMIN_IDS.includes(msg.from.id)) {
+           await handleAdminCommand(bot, msg, handleAssignmentMenu);
+       }
+       else {
+           await handleAssignmentCommand(bot, msg);
+       }
     });
 
     bot.onText(/\/pyq/, async (msg) => {
@@ -62,7 +67,6 @@ async function startBot() {
         handleBackCommand(bot, msg);
     });
 
-    // Handle view commands
     bot.onText(/\/viewpyqs/, async (msg) => {
         await handleViewPyq(bot, msg);
     });
@@ -73,6 +77,31 @@ async function startBot() {
 
     bot.onText(/\/viewSubjects/, async (msg) => {
         await handleSubjectCommand(bot, msg);
+    });
+
+    bot.onText(/\/viewassignments/, async (msg) => {
+        console.log("View assignments");
+        await handleAssignmentCommand(bot, msg);
+    });
+
+    bot.onText(/\/deletepyq/, async (msg) => {
+        await handleAdminCommand(bot, msg, handleDeletePyq);
+    });
+
+    bot.onText(/\/deleteNote/, async (msg) => {
+        await handleAdminCommand(bot, msg, handleDeleteNote);
+    });
+
+    bot.onText(/\/deleteSubject/, async (msg) => {
+        await handleAdminCommand(bot, msg, handleDeleteSubject);
+    });
+
+    bot.onText(/\/deleteassignment/, async (msg) => {
+        await handleAdminCommand(bot, msg, handleDeleteAssignment);
+    });
+
+    bot.onText(/\/updatepyq/, async (msg) => {
+        await handleAdminCommand(bot, msg, handleUpdatePyq);
     });
 }
 
@@ -112,7 +141,7 @@ async function handleWelcomeMessage(bot, msg) {
     const options = {
         reply_markup: {
             keyboard: [
-                [{ text: "/assignment" }, { text: "/timetable" }],
+                [{ text: "/assignment" }],
                 [{ text: "/notes" }, { text: "/pyq" }],
                 [{ text: "/subject" }],
             ],
@@ -289,6 +318,11 @@ async function subjectSelection(bot, msg) {
     }]));
     bot.sendMessage(msg.chat.id, "Select a subject:", { reply_markup: { inline_keyboard: buttons } });
     const subjectQuery = await new Promise(resolve => bot.once("callback_query", resolve));
+    const selectedSubject = subjects.find(sub => sub.subject_code === subjectQuery.data);
+    bot.editMessageText(`Subject selected: ${selectedSubject.subject_name}`, {
+        chat_id: subjectQuery.message.chat.id,
+        message_id: subjectQuery.message.message_id
+    });
     return subjectQuery.data;
 }
 
@@ -331,18 +365,26 @@ async function handleViewNotes(bot, msg) {
         });
         bot.sendMessage(msg.chat.id, "Select a note:", { reply_markup: { inline_keyboard: noteButtons } });
 
-        while (true) {
-            const noteQuery = await new Promise(resolve => bot.once("callback_query", resolve));
+        // Remove any existing callback_query listeners to prevent multiple responses
+        bot.removeAllListeners("callback_query");
+
+        const callbackQueryListener = async (noteQuery) => {
             const noteId = noteQuery.data;
             const noteUrl = noteUrlMap.get(noteId);
             const noteTitle = noteTitleMap.get(noteId);
 
             if (noteUrl) {
-                bot.sendDocument(noteQuery.message.chat.id, noteUrl, { caption: noteTitle });
+                await bot.sendDocument(noteQuery.message.chat.id, noteUrl, { caption: noteTitle });
             }
-        }
+
+            // Remove the listener after handling the query
+            bot.removeListener("callback_query", callbackQueryListener);
+        };
+
+        bot.on("callback_query", callbackQueryListener);
     } catch (error) {
-        bot.sendMessage(msg.chat.id, "No notes found for this subject. Please try again.");
+        console.error("Error in handleViewNotes:", error);
+        bot.sendMessage(msg.chat.id, "An error occurred while fetching notes. Please try again.");
     }
 }
 
@@ -366,6 +408,7 @@ async function handlePyqMenu(bot, msg) {
         reply_markup: {
             keyboard: [
                 [{ text: "/addpyq" }, { text: "/viewpyqs" }],
+                [{ text: "/deletepyq" }, { text: "/updatepyq" }],
                 [{ text: "/back" }],
             ],
             resize_keyboard: true,
@@ -380,6 +423,7 @@ async function handleNotesMenu(bot, msg) {
         reply_markup: {
             keyboard: [
                 [{ text: "/addnote" }, { text: "/viewnotes" }],
+                [{ text: "/deleteNote" }],
                 [{ text: "/back" }],
             ],
             resize_keyboard: true,
@@ -394,6 +438,7 @@ async function handleSubjectMenu(bot, msg) {
         reply_markup: {
             keyboard: [
                 [{ text: "/addSubject" }, { text: "/viewSubjects" }],
+                [{ text: "/deleteSubject" }],
                 [{ text: "/back" }],
             ],
             resize_keyboard: true,
@@ -403,11 +448,26 @@ async function handleSubjectMenu(bot, msg) {
     bot.sendMessage(msg.chat.id, "Subject Options:", options);
 }
 
+async function handleAssignmentMenu(bot, msg) {
+    const options = {
+        reply_markup: {
+            keyboard: [
+                [{ text: "/addassignment" }, { text: "/viewassignments" }],
+                [{ text: "/deleteassignment" }],
+                [{ text: "/back" }],
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: true
+        }
+    };
+    bot.sendMessage(msg.chat.id, "Assignment Options:", options);
+}
+
 function handleBackCommand(bot, msg) {
     const options = {
         reply_markup: {
             keyboard: [
-                [{ text: "/assignment" }, { text: "/timetable" }],
+                [{ text: "/assignment" }],
                 [{ text: "/notes" }, { text: "/pyq" }],
                 [{ text: "/subject" }],
             ],
@@ -415,8 +475,176 @@ function handleBackCommand(bot, msg) {
             one_time_keyboard: true
         }
     };
-    bot.sendMessage(msg.chat.id, "How can I help you today?", options);
+    bot.sendMessage(msg.chat.id, "What would you like to do next?", options); 
 }
+
+async function handleDeletePyq(bot, msg) {
+    try {
+        const response = await axios.get(`${API_URL}/pyq`);
+        const pyqs = response.data;
+        if (pyqs.length === 0) {
+            bot.sendMessage(msg.chat.id, "No previous year question papers available for deletion.");
+            return;
+        }
+        const options = {
+            reply_markup: {
+                keyboard: pyqs.map(pyq => ([{ text: pyq.qp_title }])),
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+        bot.sendMessage(msg.chat.id, "Select a previous year question paper to delete:", options);
+        const pyqToDelete = await getUserInput(bot, msg.chat.id);
+        const pyq = pyqs.find(pyq => pyq.qp_title === pyqToDelete);
+        if (!pyq) {
+            bot.sendMessage(msg.chat.id, "Invalid previous year question paper. Please try again.");
+            return;
+        }
+        await axios.delete(`${API_URL}/pyq/${pyq.qp_id}`);
+        bot.sendMessage(msg.chat.id, `Previous year question paper '${pyqToDelete}' deleted successfully.`);
+        handleBackCommand(bot, msg);
+    }
+    catch (error) {
+        console.error("Error deleting previous year question paper:", error);
+        bot.sendMessage(msg.chat.id, "Failed to delete previous year question paper. Please try again.");
+    }
+}
+
+async function handleDeleteNote(bot, msg) {
+    try {
+        const response = await axios.get(`${API_URL}/notes`);
+        const notes = response.data;
+        if (notes.length === 0) {
+            bot.sendMessage(msg.chat.id, "No notes available for deletion.");
+            return;
+        }
+        const options = {
+            reply_markup: {
+                keyboard: notes.map(note => ([{ text: note.note_title }])),
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+        bot.sendMessage(msg.chat.id, "Select a note to delete:", options);
+        const noteToDelete = await getUserInput(bot, msg.chat.id);
+        const note = notes.find(note => note.note_title === noteToDelete);
+        if (!note) {
+            bot.sendMessage(msg.chat.id, "Invalid note. Please try again.");
+            return;
+        }
+        await axios.delete(`${API_URL}/notes/${note.note_id}`);
+        bot.sendMessage(msg.chat.id, `Note '${noteToDelete}' deleted successfully.`);
+        handleBackCommand(bot, msg);
+    }
+    catch (error) {
+        console.error("Error deleting note:", error);
+        bot.sendMessage(msg.chat.id, "Failed to delete note. Please try again.");
+    }
+}
+
+async function handleDeleteSubject(bot, msg) {
+    try {
+        const response = await axios.get(`${API_URL}/subjects`);
+        const subjects = response.data;
+        if (subjects.length === 0) {
+            bot.sendMessage(msg.chat.id, "No subjects available for deletion.");
+            return;
+        }
+        const options = {
+            reply_markup: {
+                keyboard: subjects.map(sub => ([{ text: sub.subject_name }])),
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+        bot.sendMessage(msg.chat.id, "Select a subject to delete:", options);
+        const subjectToDelete = await getUserInput(bot, msg.chat.id);
+        const subject = subjects.find(sub => sub.subject_name === subjectToDelete);
+        if (!subject) {
+            bot.sendMessage(msg.chat.id, "Invalid subject. Please try again.");
+            return;
+        }
+        await axios.delete(`${API_URL}/subjects/${subject.subject_code}`);
+        bot.sendMessage(msg.chat.id, `Subject '${subjectToDelete}' deleted successfully.`);
+        handleBackCommand(bot, msg);
+    }
+    catch (error) {
+        console.error("Error deleting subject:", error);
+        bot.sendMessage(msg.chat.id, "Failed to delete subject. Please try again.");
+    }
+}
+
+async function handleDeleteAssignment(bot, msg) {
+    try {
+        const response = await axios.get(`${API_URL}/assignments`);
+        const assignments = response.data;
+        if (assignments.length === 0) {
+            bot.sendMessage(msg.chat.id, "No assignments available for deletion.");
+            return;
+        }
+        const options = {
+            reply_markup: {
+                keyboard: assignments.map(assignment => ([{ text: assignment.assignment_title }])),
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+        bot.sendMessage(msg.chat.id, "Select an assignment to delete:", options);
+        const assignmentToDelete = await getUserInput(bot, msg.chat.id);
+        const assignment = assignments.find(assignment => assignment.assignment_title === assignmentToDelete);
+        if (!assignment) {
+            bot.sendMessage(msg.chat.id, "Invalid assignment. Please try again.");
+            return;
+        }
+        await axios.delete(`${API_URL}/assignments/${assignment.assignment_id}`);
+        bot.sendMessage(msg.chat.id, `Assignment '${assignmentToDelete}' deleted successfully.`);
+        handleBackCommand(bot, msg);
+    }
+    catch (error) {
+        console.error("Error deleting assignment:", error);
+        bot.sendMessage(msg.chat.id, "Failed to delete assignment. Please try again.");
+    }
+}
+
+async function handleUpdatePyq(bot, msg) {
+    try {
+        const response = await axios.get(`${API_URL}/pyq`);
+        const pyqs = response.data;
+        if (pyqs.length === 0) {
+            bot.sendMessage(msg.chat.id, "No previous year question papers available for update.");
+            return;
+        }
+        const options = {
+            reply_markup: {
+                keyboard: pyqs.map(pyq => ([{ text: pyq.qp_title }])),
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+        bot.sendMessage(msg.chat.id, "Select a previous year question paper to update:", options);
+        const pyqToUpdate = await getUserInput(bot, msg.chat.id);
+        const pyq = pyqs.find(pyq => pyq.qp_title === pyqToUpdate);
+        if (!pyq) {
+            bot.sendMessage(msg.chat.id, "Invalid previous year question paper. Please try again.");
+            return;
+        }
+        bot.sendMessage(msg.chat.id, "Please enter the new title of the previous year question paper:");
+        const newTitle = await getUserInput(bot, msg.chat.id);
+        bot.sendMessage(msg.chat.id, "Please enter the new year:");
+        const newYear = await getUserInput(bot, msg.chat.id);
+        await axios.patch(`${API_URL}/pyq/${pyq.qp_id}`, {
+            qp_title: newTitle,
+            qp_year: newYear
+        });
+        bot.sendMessage(msg.chat.id, `Previous year question paper '${pyqToUpdate}' updated successfully.`);
+        handleBackCommand(bot, msg);
+    }
+    catch (error) {
+        console.error("Error updating previous year question paper:", error);
+        bot.sendMessage(msg.chat.id, "Failed to update previous year question paper. Please try again.");
+    }
+}
+
 
 module.exports = {
     start: startBot
