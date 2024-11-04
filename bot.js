@@ -4,6 +4,7 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_IDS = process.env.ADMIN_IDS.split(',').map(id => parseInt(id));
 const API_URL = process.env.API_URL;
 const { format } = require('date-fns');
+const { text } = require('express');
 
 async function startBot() {
     const bot = new TelegramBot(TOKEN, { polling: true });
@@ -103,6 +104,19 @@ async function startBot() {
     bot.onText(/\/updatepyq/, async (msg) => {
         await handleAdminCommand(bot, msg, handleUpdatePyq);
     });
+
+    bot.onText(/\/updateSubject/, async (msg) => {
+        await handleAdminCommand(bot, msg, handleUpdateSubject);
+    });
+
+    bot.onText(/\/updateassignment/, async (msg) => {
+        await handleAdminCommand(bot,msg,handleUpdateAssignment);
+    });
+
+    bot.onText(/\/updatenote/, async (msg) => {
+        await handleAdminCommand(bot,msg,handleUpdateNote);
+    });
+
 }
 
 async function handleStartCommand(bot, msg) {
@@ -153,21 +167,26 @@ async function handleWelcomeMessage(bot, msg) {
 }
 
 async function handleAddSubject(bot, msg) {
-    bot.sendMessage(msg.chat.id, "Please enter the subject code:");
-    const subjectCode = await getUserInput(bot, msg.chat.id);
-    bot.sendMessage(msg.chat.id, "Please enter the subject name:");
-    const subjectName = await getUserInput(bot, msg.chat.id);
-    bot.sendMessage(msg.chat.id, "Please enter the subject credits:");
-    const subjectCredits = await getUserInput(bot, msg.chat.id);
-    const response = await axios.post(`${API_URL}/subjects`, {
-        subject_code: subjectCode,
-        subject_name: subjectName,
-        credits: subjectCredits
-    });
-    if (response.status === 201) {
-        bot.sendMessage(msg.chat.id, `Subject ${subjectName} added successfully.`);
-    } else {
-        bot.sendMessage(msg.chat.id, `Subject ${subjectName} already exists.`);
+    try {
+        bot.sendMessage(msg.chat.id, "Please enter the subject code:");
+        const subjectCode = await getUserInput(bot, msg.chat.id);
+        bot.sendMessage(msg.chat.id, "Please enter the subject name:");
+        const subjectName = await getUserInput(bot, msg.chat.id);
+        bot.sendMessage(msg.chat.id, "Please enter the subject credits:");
+        const subjectCredits = await getUserInput(bot, msg.chat.id);
+        const response = await axios.post(`${API_URL}/subjects`, {
+            subject_code: subjectCode,
+            subject_name: subjectName,
+            credits: subjectCredits
+        });
+        if (response.status === 201) {
+            bot.sendMessage(msg.chat.id, `Subject ${subjectName} added successfully.`);
+        } else {
+            bot.sendMessage(msg.chat.id, `Subject ${subjectName} already exists.`);
+        }
+    } catch(error) {
+        console.error("Error adding subject:", error);
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to add subject. Please try again.");
     }
 }
 
@@ -188,7 +207,7 @@ async function handleSubjectCommand(bot, msg) {
 
     } catch (error) {
         console.error("Error fetching subjects:", error);
-        bot.sendMessage(msg.chat.id, "Failed to fetch subjects. Please try again.");
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to fetch subjects. Please try again.");
     }
 }
 
@@ -214,7 +233,7 @@ async function handleAssignmentCommand(bot, msg) {
         bot.sendMessage(msg.chat.id, `Upcoming Assignments:\n\n${assignmentList}`);
     } catch (error) {
         console.error("Error fetching assignments:", error);
-        bot.sendMessage(msg.chat.id, "Failed to fetch assignments. Please try again.");
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to fetch assignments. Please try again.");
     }
 }
 
@@ -305,7 +324,7 @@ async function handleViewPyq(bot, msg) {
             }
         }
     } catch (error) {
-        bot.sendMessage(msg.chat.id, "No previous year question papers found for this subject. Please try again.");
+        bot.sendMessage(msg.chat.id, "No previous year question papers found for this subject.");
     }
 }
 
@@ -384,7 +403,7 @@ async function handleViewNotes(bot, msg) {
         bot.on("callback_query", callbackQueryListener);
     } catch (error) {
         console.error("Error in handleViewNotes:", error);
-        bot.sendMessage(msg.chat.id, "An error occurred while fetching notes. Please try again.");
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to fetch notes. Please try again.");
     }
 }
 
@@ -423,7 +442,7 @@ async function handleNotesMenu(bot, msg) {
         reply_markup: {
             keyboard: [
                 [{ text: "/addnote" }, { text: "/viewnotes" }],
-                [{ text: "/deleteNote" }],
+                [{ text: "/deleteNote" },{text: "/updatenote"}],
                 [{ text: "/back" }],
             ],
             resize_keyboard: true,
@@ -438,7 +457,7 @@ async function handleSubjectMenu(bot, msg) {
         reply_markup: {
             keyboard: [
                 [{ text: "/addSubject" }, { text: "/viewSubjects" }],
-                [{ text: "/deleteSubject" }],
+                [{ text: "/deleteSubject" },{ text: "/updateSubject" }],
                 [{ text: "/back" }],
             ],
             resize_keyboard: true,
@@ -453,7 +472,7 @@ async function handleAssignmentMenu(bot, msg) {
         reply_markup: {
             keyboard: [
                 [{ text: "/addassignment" }, { text: "/viewassignments" }],
-                [{ text: "/deleteassignment" }],
+                [{ text: "/deleteassignment" },{text:"/updateassignment"}],
                 [{ text: "/back" }],
             ],
             resize_keyboard: true,
@@ -506,7 +525,7 @@ async function handleDeletePyq(bot, msg) {
     }
     catch (error) {
         console.error("Error deleting previous year question paper:", error);
-        bot.sendMessage(msg.chat.id, "Failed to delete previous year question paper. Please try again.");
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to delete previous year question paper. Please try again.");
     }
 }
 
@@ -538,7 +557,7 @@ async function handleDeleteNote(bot, msg) {
     }
     catch (error) {
         console.error("Error deleting note:", error);
-        bot.sendMessage(msg.chat.id, "Failed to delete note. Please try again.");
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to delete note. Please try again.");
     }
 }
 
@@ -570,7 +589,7 @@ async function handleDeleteSubject(bot, msg) {
     }
     catch (error) {
         console.error("Error deleting subject:", error);
-        bot.sendMessage(msg.chat.id, "Failed to delete subject. Please try again.");
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to delete subject. Please try again.");
     }
 }
 
@@ -602,7 +621,11 @@ async function handleDeleteAssignment(bot, msg) {
     }
     catch (error) {
         console.error("Error deleting assignment:", error);
-        bot.sendMessage(msg.chat.id, "Failed to delete assignment. Please try again.");
+        if (error.response && error.response.status === 404) {
+            bot.sendMessage(msg.chat.id, "Assignment not found. Please try again.");
+        } else {
+            bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to delete assignment. Please try again.");
+        }
     }
 }
 
@@ -641,10 +664,130 @@ async function handleUpdatePyq(bot, msg) {
     }
     catch (error) {
         console.error("Error updating previous year question paper:", error);
-        bot.sendMessage(msg.chat.id, "Failed to update previous year question paper. Please try again.");
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to update previous year question paper. Please try again.");
     }
 }
 
+async function handleUpdateSubject(bot, msg) {
+    try {
+        const response = await axios.get(`${API_URL}/subjects`);
+        const subjects = response.data;
+        if (subjects.length === 0) {
+            bot.sendMessage(msg.chat.id, "No subjects available for update.");
+            return;
+        }
+        const options = {
+            reply_markup: {
+                keyboard: subjects.map(sub => ([{ text: sub.subject_name }])),
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+        bot.sendMessage(msg.chat.id, "Select a subject to update:", options);
+        const subjectToUpdate = await getUserInput(bot, msg.chat.id);
+        const subject = subjects.find(sub => sub.subject_name === subjectToUpdate);
+        if (!subject) {
+            bot.sendMessage(msg.chat.id, "Invalid subject. Please try again.");
+            return;
+        }
+        bot.sendMessage(msg.chat.id, "Please enter the new subject name:");
+        const newName = await getUserInput(bot, msg.chat.id);
+        bot.sendMessage(msg.chat.id, "Please enter the new subject credits:");
+        const newCredits = await getUserInput(bot, msg.chat.id);
+        await axios.patch(`${API_URL}/subjects/${subject.subject_code}`, {
+            subject_name: newName,
+            credits: newCredits
+        });
+        bot.sendMessage(msg.chat.id, `Subject '${subjectToUpdate}' updated successfully.`);
+        handleBackCommand(bot, msg);
+    }
+    catch (error) {
+        console.error("Error updating subject:", error);
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to update subject. Please try again.");
+    }
+}
+
+async function handleUpdateAssignment(bot, msg) {
+    try {
+        const response = await axios.get(`${API_URL}/assignments`);
+        const assignments = response.data;
+        if (assignments.length === 0) {
+            bot.sendMessage(msg.chat.id, "No assignments available for update.");
+            return;
+        }
+        const options = {
+            reply_markup: {
+                keyboard: assignments.map(assignment => ([{ text: assignment.assignment_title }])),
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+        bot.sendMessage(msg.chat.id, "Select an assignment to update:", options);
+        const assignmentToUpdate = await getUserInput(bot, msg.chat.id);
+        const assignment = assignments.find(assignment => assignment.assignment_title === assignmentToUpdate);
+        if (!assignment) {
+            bot.sendMessage(msg.chat.id, "Invalid assignment. Please try again.");
+            return;
+        }
+        bot.sendMessage(msg.chat.id, "Please enter the new title of the assignment:");
+        const newTitle = await getUserInput(bot, msg.chat.id);
+        bot.sendMessage(msg.chat.id, "Please enter the new date of submission (YYYY-MM-DD):");
+        const newDateOfSubmission = await getUserInput(bot, msg.chat.id);
+        await axios.patch(`${API_URL}/assignments/${assignment.assignment_id}`, {
+            assignment_title: newTitle,
+            date_of_submission: newDateOfSubmission
+        });
+        bot.sendMessage(msg.chat.id, `Assignment '${assignmentToUpdate}' updated successfully.`);
+        handleBackCommand(bot, msg);
+    } catch (error) {
+        console.error("Error updating assignment:", error);
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to update assignment. Please try again.");
+    }
+}
+
+async function handleUpdateNote(bot, msg) {
+    try {
+        bot.sendMessage(msg.chat.id, "Please select the subject:");
+        const subject = await subjectSelection(bot, msg);
+        const notesResponse = await axios.get(`${API_URL}/notes/subject/${subject}`);
+        const notes = notesResponse.data;
+        if (notes.length === 0) {
+            bot.sendMessage(msg.chat.id, "No notes available for update.");
+            return;
+        }
+        const options = {
+            reply_markup: {
+                keyboard: notes.map(note => ([{ text: note.note_title }])),
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+        bot.sendMessage(msg.chat.id, "Select a note to update:", options);
+        const noteToUpdate = await getUserInput(bot, msg.chat.id);
+        const note = notes.find(note => note.note_title === noteToUpdate);
+        if (!note) {
+            bot.sendMessage(msg.chat.id, "Invalid note. Please try again.");
+            return;
+        }
+        bot.sendMessage(msg.chat.id, "Please enter the new title of the note:");
+        const newTitle = await getUserInput(bot, msg.chat.id);
+        bot.sendMessage(msg.chat.id, "Please select the new subject:");
+        const newSubject = await subjectSelection(bot, msg);
+        bot.sendMessage(msg.chat.id, "Please send the new note file:");
+        const newNoteMsg = await new Promise(resolve => bot.once("document", resolve));
+        const newNoteFile = newNoteMsg.document;
+        await axios.patch(`${API_URL}/notes/${note.note_id}`, {
+            note_title: newTitle,
+            subject_code: newSubject,
+            note_url: newNoteFile.file_id
+        });
+        bot.sendMessage(msg.chat.id, `Note '${noteToUpdate}' updated successfully.`);
+        handleBackCommand(bot, msg);
+    } catch (error) {
+        console.error("Error updating note:", error);
+        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to update note. Please try again.");
+    }
+}
 
 module.exports = {
     start: startBot
