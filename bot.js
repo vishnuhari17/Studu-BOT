@@ -250,6 +250,7 @@ async function handleNewUserRegistration(bot, id, first_name, last_name, usernam
         const studentClass = await getUserInput(bot, id);
         await registerUser(id, first_name, last_name, email, dob, studentClass);
         await bot.sendMessage(id, `You are successfully registered.`);
+        await handleWelcomeMessage(bot, { chat: { id } });
     } catch (error) {
         console.error("Error registering student:", error);
         await bot.sendMessage(id, `Failed to register. Please try again.`);
@@ -292,8 +293,12 @@ async function handleAddPyq(bot, msg) {
 
 async function handleViewPyq(bot, msg) {
     try {
-        bot.sendMessage(msg.chat.id, "Please select the subject:");
         const subject = await subjectSelection(bot, msg);
+        if (!subject)
+        {
+            bot.sendMessage(msg.chat.id,"No subjects found");
+            return;
+        }
         const pyqsResponse = await axios.get(`${API_URL}/pyq/subject/${subject}`);
         const pyqs = pyqsResponse.data;
         if (pyqs.length === 0) {
@@ -329,20 +334,26 @@ async function handleViewPyq(bot, msg) {
 }
 
 async function subjectSelection(bot, msg) {
-    const subjectsResponse = await axios.get(`${API_URL}/subjects`);
-    const subjects = subjectsResponse.data;
-    const buttons = subjects.map(sub => ([{
-        text: sub.subject_name,
-        callback_data: sub.subject_code
-    }]));
-    bot.sendMessage(msg.chat.id, "Select a subject:", { reply_markup: { inline_keyboard: buttons } });
-    const subjectQuery = await new Promise(resolve => bot.once("callback_query", resolve));
-    const selectedSubject = subjects.find(sub => sub.subject_code === subjectQuery.data);
-    bot.editMessageText(`Subject selected: ${selectedSubject.subject_name}`, {
-        chat_id: subjectQuery.message.chat.id,
-        message_id: subjectQuery.message.message_id
-    });
-    return subjectQuery.data;
+    try{    
+        const subjectsResponse = await axios.get(`${API_URL}/subjects`);
+        const subjects = subjectsResponse.data;
+        const buttons = subjects.map(sub => ([{
+            text: sub.subject_name,
+            callback_data: sub.subject_code
+        }]));
+        bot.sendMessage(msg.chat.id, "Select a subject:", { reply_markup: { inline_keyboard: buttons } });
+        const subjectQuery = await new Promise(resolve => bot.once("callback_query", resolve));
+        const selectedSubject = subjects.find(sub => sub.subject_code === subjectQuery.data);
+        bot.editMessageText(`Subject selected: ${selectedSubject.subject_name}`, {
+            chat_id: subjectQuery.message.chat.id,
+            message_id: subjectQuery.message.message_id
+        });
+        return subjectQuery.data;
+    } catch (error)
+    {
+        console.log("Error in subject selection:", error);
+        return null;
+    }
 }
 
 async function handleAddNote(bot, msg) {
