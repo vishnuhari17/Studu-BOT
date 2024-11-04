@@ -747,10 +747,8 @@ async function handleUpdateAssignment(bot, msg) {
 
 async function handleUpdateNote(bot, msg) {
     try {
-        bot.sendMessage(msg.chat.id, "Please select the subject:");
-        const subject = await subjectSelection(bot, msg);
-        const notesResponse = await axios.get(`${API_URL}/notes/subject/${subject}`);
-        const notes = notesResponse.data;
+        const response = await axios.get(`${API_URL}/notes`);
+        const notes = response.data;
         if (notes.length === 0) {
             bot.sendMessage(msg.chat.id, "No notes available for update.");
             return;
@@ -771,21 +769,17 @@ async function handleUpdateNote(bot, msg) {
         }
         bot.sendMessage(msg.chat.id, "Please enter the new title of the note:");
         const newTitle = await getUserInput(bot, msg.chat.id);
-        bot.sendMessage(msg.chat.id, "Please select the new subject:");
-        const newSubject = await subjectSelection(bot, msg);
-        bot.sendMessage(msg.chat.id, "Please send the new note file:");
-        const newNoteMsg = await new Promise(resolve => bot.once("document", resolve));
-        const newNoteFile = newNoteMsg.document;
+        bot.sendMessage(msg.chat.id, "Please enter the new subject code of the note:");
+        const newSubjectCode = await getUserInput(bot, msg.chat.id);
         await axios.patch(`${API_URL}/notes/${note.note_id}`, {
             note_title: newTitle,
-            subject_code: newSubject,
-            note_url: newNoteFile.file_id
+            subject_code: newSubjectCode
         });
         bot.sendMessage(msg.chat.id, `Note '${noteToUpdate}' updated successfully.`);
         handleBackCommand(bot, msg);
     } catch (error) {
         console.error("Error updating note:", error);
-        bot.sendMessage(msg.chat.id, error.response.data.message || "Failed to update note. Please try again.");
+        bot.sendMessage(msg.chat.id, error.response?.data?.message || "Failed to update note. Please try again.");
     }
 }
 
