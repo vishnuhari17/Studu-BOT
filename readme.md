@@ -1,7 +1,97 @@
-# **STUDUBOT - Student Support Telegram Bot 🤖**
- [![MIT](https://badgen.net/badge/license/MIT/blue)](https://github.com/vishnuhari17/STUDUBOT/blob/main/LICENSE)
+# **STUDUBOT - Student Support Telegram Bot 🤖**  
+[![MIT](https://badgen.net/badge/license/MIT/blue)](https://github.com/vishnuhari17/STUDUBOT/blob/main/LICENSE)
 
-![](https://raw.githubusercontent.com/vishnuhari17/Studu-BOT/refs/heads/main/be6ca864-cb68-45d0-a010-d0c345c60612.jpeg?token=GHSAT0AAAAAACV437MJWE5XZSKDSGJVNCE6ZZPVU4A)
+![STUDUBOT Banner](https://raw.githubusercontent.com/vishnuhari17/Studu-BOT/refs/heads/main/be6ca864-cb68-45d0-a010-d0c345c60612.jpeg?token=GHSAT0AAAAAACV437MJWE5XZSKDSGJVNCE6ZZPVU4A)
+
+---
+
+## 🤓 What is it about?
+
+**STUDUBOT** is a Telegram bot designed to streamline student access to academic resources like notes, previous year question papers (PYQs), and assignments. It provides an easy-to-use platform for students while offering robust content management tools for administrators.
+
+---
+
+## 🚀 Getting Started
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Start the bot:
+   ```bash
+   npm start
+   ```
+
+3. Open Telegram and search for **STUDUBOT** to interact with the bot.
+
+---
+
+## 🤏 Prerequisites
+
+- **NodeJS**
+- **PostgreSQL**
+- **Telegram API Token**
+
+---
+
+## 🧰 Tech Stack
+
+| Technology                                                                                            | Description                                                               |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [Telegram Bot API](https://telegram.org/)                                                              | Interactive student support via Telegram.                               |
+| [Express.js](https://expressjs.com/)                                                                    | RESTful API framework for backend operations.                           |
+| [PostgreSQL](https://www.postgresql.org/)                                                               | Relational database for secure data storage.                            |
+
+---
+
+## 🤝 Contributors
+
+<a href="https://github.com/vishnuhari17/Studu-BOT/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=vishnuhari17/Studu-BOT" />
+</a>
+
+---
+
+## Key Features
+
+### 🌐 Centralized Resource Hub
+- Single platform for sharing study materials.
+- Admins can manage content easily and ensure resources are up-to-date.
+
+### 🛠️ Effortless Administration
+- CRUD operations for managing resources.
+- Secure upload of notes, PYQs, and assignments.
+
+### 🔍 Student Access
+- Students can view, but not edit resources, ensuring data integrity.
+- Real-time updates on new content.
+
+### 🛡️ Data Integrity
+- Cascading updates maintain consistency across resources.
+
+---
+
+## Empowering Students & Admins
+
+1. **Easy Registration**: Simple student registration with admin selection.
+2. **Controlled Management**: Admin-only access to upload/edit content.
+3. **Seamless Access**: Students can easily browse notes, PYQs, and assignments.
+4. **Consistent Data**: Integrity constraints ensure up-to-date information.
+
+---
+
+## 🛡️ License
+
+STUDUBOT is licensed under the [MIT License](https://github.com/vishnuhari17/STUDUBOT/blob/main/LICENSE).
+
+---
+
+Thank you for choosing **STUDUBOT**—your partner in academic success! 🚀
+
+--- 
+
+This version keeps the essential details while making the text more streamlined. Let me know if you need further edits!//raw.githubusercontent.com/vishnuhari17/Studu-BOT/refs/heads/main/be6ca864-cb68-45d0-a010-d0c345c60612.jpeg?token=GHSAT0AAAAAACV437MJWE5XZSKDSGJVNCE6ZZPVU4A)
 
 ## 🤓 What is it about?
 
@@ -61,7 +151,7 @@ This bot provides a centralized hub for managing academic resources, making it e
 ## Empowering Students and Administrators
 
 1. **Streamlined Registration**: Simple student registration with admin selection by the database owner.
-2. **Controlled Data Management**: Exclusive admin rights for content updates and deletions.
+2. **Controlled Data Management**: Exclusive admin rights for content updates and deletion.
 3. **Comprehensive Resource Access**: Students can effortlessly view subject notes, PYQs, and pending assignments.
 4. **Data Consistency**: Integrity constraints and cascading updates ensure accurate and up-to-date information.
 
